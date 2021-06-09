@@ -11,6 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 # install.packages("brainGraph")
 library(brainGraph)
 library(igraph)
+library(tidyverse, ggplot2)
 ```
 
 ## Preparing Data
@@ -29,62 +30,113 @@ submatrix = list()
 for (x in 1:length(outReg)) {
   submatrix = append(submatrix, list(outReg[[x]][["regression_matrix"]][1:26,1:26]))
 }
-
 # Convert all submatrices into double type
 feature_names = c("energetic", "enthusiastic", "content", "irritable", "restless", "worried", "guilty",  "afraid", "anhedonia", "angry","hopeless", "down", "positive", "fatigue", "tension", "concentrate", "accepted", "threatened", "ruminate", "avoid_act", "reassure", "procrast", "hours", "difficult", "unsatisfy", "avoid_people")
 subdf = list()
+subdf_pos = list()
 for (x in 1:length(outReg)) {
   subdf[[x]] = matrix(unlist(submatrix[x]), ncol = 26, byrow = FALSE, dimnames = list(feature_names, feature_names))
+  subdf_pos[[x]] = pmax(subdf[[x]], 0)
 }
-subdf[[1]]
+
 ```
 
 ### Extract Directed Graphs for each Person
 ```{r}
 dir_graph = list()
+dir_graph_pos = list()
 for(x in 1:length(outReg) ){
   dir_graph[[x]] = graph.adjacency(subdf[[x]], mode = "directed", weighted = TRUE)
+  dir_graph_pos[[x]] = graph.adjacency(subdf_pos[[x]], mode = "directed", weighted = TRUE)
 }
-dir_graph[[1]]
+dir_graph[[19]]
+dir_graph_pos[[19]]
+
 ```
 
 ## Metrics for each Person
 ```{r}
 density = list()
 overall_weight = list()
+edge_weights = list()
+global_efficiency = list()
 variable_degrees = list() 
 variable_strengths = list() 
+betweenness = list()
 for(x in 1:length(outReg)) {
   density[[x]] = edge_density(dir_graph[[x]], loops = FALSE)
   overall_weight[[x]] = sum(strength(dir_graph[[x]]))
+  edge_weights[[x]] = edge_attr(dir_graph_pos[[x]], "weight")
+
+  global_efficiency[[x]] = efficiency(dir_graph_pos[[x]], 
+                                     type = c("global"), 
+                                     weights = edge_weights[[x]])
   variable_degrees[[x]] = degree(dir_graph[[x]])
   variable_strengths[[x]] = strength(dir_graph[[x]])
-  # Todo: Incude Global Efficiency and Betweenness Centrality measures.
+  
+  betweenness[[x]] = estimate_betweenness(dir_graph_pos[[x]], cutoff=-1, weights =edge_weights[[x]])
+
 }
 print(paste0("Density of the first person's graph: ", round(density[[1]], 4)))
 print(paste0("Overall Weight of the first person's graph: ", round(overall_weight[[1]], 4))) 
+print(paste0("Global Efficiency of the first person's graph: ", round(global_efficiency[[1]], 4))) 
+
 print("Degree of each variable in the first person's graph: ")
 print(variable_degrees[[1]])
 print("Strengths of each variable in the first person's graph: ")
 print(variable_strengths[[1]])
+print("Betweenness Centrality of each variable in the first person's graph: ")
+print(betweenness[[1]])
+
+```
+
+
+```{r}
+density_mean = mean(unlist(density))
+density_sd = sd(unlist(density))
+density_range = range(unlist(density))
+
+overall_weight_mean = mean(unlist(overall_weight))
+overall_weight_sd = sd(unlist(overall_weight))
+overall_weight_range = range(unlist(overall_weight))
+
+global_efficiency_mean = mean(unlist(global_efficiency))
+global_efficiency_sd = sd(unlist(global_efficiency))
+global_efficiency_range = range(unlist(global_efficiency))
+
+variable_degrees_mat = do.call(rbind, variable_degrees)
+variable_degrees_mean = apply(variable_degrees_mat, 2, mean)
+variable_degrees_sd = apply(variable_degrees_mat, 2, sd)
+variable_degrees_range = apply(variable_degrees_mat, 2, range)
+
+variable_strengths_mat = do.call(rbind, variable_strengths)
+variable_strengths_mean = apply(variable_strengths_mat, 2, mean)
+variable_strengths_sd = apply(variable_strengths_mat, 2, sd)
+variable_strengths_range = apply(variable_strengths_mat, 2, range)
+
+betweenness_mat = do.call(rbind, betweenness)
+betweenness_mean = apply(betweenness_mat, 2, mean)
+betweenness_sd = apply(betweenness_mat, 2, sd)
+betweenness_range = apply(betweenness_mat, 2, range)
 ```
 
 ```{r}
-# Global Efficiency: may require postive weight vector
-efficiency(dir_graph[[1]], type = c("global"), weights = NA,
-  xfm = FALSE, xfm.type = NULL, use.parallel = TRUE, A = NULL,
-  D = NULL)
+p = ggplot(network_stat, aes(x = as.factor(group))) +
+  geom_boxplot(aes(
+      lower = mean - sd, 
+      upper = mean + sd, 
+      middle = mean, 
+      ymin = minimum, 
+      ymax = maximum),
+      stat = "identity") 
+p +
+  xlab("Metric") +
+  ylab("Measurement Value")
+
 ```
 
 ```{r}
-# Betweenness Centrality: Requires positive weight vector and potential cutoff range.
-  # estimate_betweenness(dir_graph[[1]], cutoff=0, weights =edge_weights)
-  # betweenness(dir_graph[[1]])
-  # centr_betw(dir_graph[[1]])
+network_stat = data.frame("mean" = c(density_mean, overall_weight_mean, global_efficiency_mean), "sd" = c(density_sd, overall_weight_sd, global_efficiency_sd),"minimum" = c(density_range[[1]], overall_weight_range[[1]], global_efficiency_range[[1]]), "maximum" = c(density_range[[2]], overall_weight_range[[2]], global_efficiency_range[[2]]), "group" = c("Density","Overall Weight","Global Efficiency"))
 
-# Edge Weight Attribute
-edge_weights = edge_attr(dir_graph[[1]], "weight")
-print("Edge Weights of the first person's graph: ")
-print(edge_weights)
 ```
 

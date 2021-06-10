@@ -1,6 +1,6 @@
 ---
 title: "Network Analysis"
-author: "Shara He"
+author: "Shara He, Adanya Johnson"
 date: "6/7/2021"
 output: html_document
 ---
@@ -15,7 +15,6 @@ library(tidyverse, ggplot2)
 ```
 
 ## Preparing Data
-
 ```{r}
 # Read in data
 load("~/Desktop/School/GatesLab/NetworkAnalysis/FullMatrices.Rdata")
@@ -63,6 +62,7 @@ global_efficiency = list()
 variable_degrees = list() 
 variable_strengths = list() 
 betweenness = list()
+cluster = list()
 for(x in 1:length(outReg)) {
   density[[x]] = edge_density(dir_graph[[x]], loops = FALSE)
   overall_weight[[x]] = sum(strength(dir_graph[[x]]))
@@ -75,22 +75,27 @@ for(x in 1:length(outReg)) {
   variable_strengths[[x]] = strength(dir_graph[[x]])
   
   betweenness[[x]] = estimate_betweenness(dir_graph_pos[[x]], cutoff=-1, weights =edge_weights[[x]])
+  cluster[[x]] = cluster_walktrap(dir_graph_pos[[x]], 
+                                  weights = E(dir_graph_pos[[x]])$edge_weights, 
+                                  steps = 4)
+                            
 
 }
 print(paste0("Density of the first person's graph: ", round(density[[1]], 4)))
 print(paste0("Overall Weight of the first person's graph: ", round(overall_weight[[1]], 4))) 
 print(paste0("Global Efficiency of the first person's graph: ", round(global_efficiency[[1]], 4))) 
-
 print("Degree of each variable in the first person's graph: ")
 print(variable_degrees[[1]])
 print("Strengths of each variable in the first person's graph: ")
 print(variable_strengths[[1]])
 print("Betweenness Centrality of each variable in the first person's graph: ")
 print(betweenness[[1]])
+print("Clustering Walktrap of each variable in the first person's graph: ")
+print(cluster[[1]])
 
 ```
 
-
+## Computing Metric Summary Statistics
 ```{r}
 density_mean = mean(unlist(density))
 density_sd = sd(unlist(density))
@@ -118,9 +123,15 @@ betweenness_mat = do.call(rbind, betweenness)
 betweenness_mean = apply(betweenness_mat, 2, mean)
 betweenness_sd = apply(betweenness_mat, 2, sd)
 betweenness_range = apply(betweenness_mat, 2, range)
+
 ```
 
+## Plots and Distribution
+
+### Boxplot Distribution Across each Network-Wide Metric Using Summary Statistics
 ```{r}
+network_stat = data.frame("mean" = c(density_mean, overall_weight_mean, global_efficiency_mean), "sd" = c(density_sd, overall_weight_sd, global_efficiency_sd),"minimum" = c(density_range[[1]], overall_weight_range[[1]], global_efficiency_range[[1]]), "maximum" = c(density_range[[2]], overall_weight_range[[2]], global_efficiency_range[[2]]), "group" = c("Density","Overall Weight","Global Efficiency"))
+
 p = ggplot(network_stat, aes(x = as.factor(group))) +
   geom_boxplot(aes(
       lower = mean - sd, 
@@ -129,14 +140,53 @@ p = ggplot(network_stat, aes(x = as.factor(group))) +
       ymin = minimum, 
       ymax = maximum),
       stat = "identity") 
-p +
-  xlab("Metric") +
+
+p + xlab("Metric") +
   ylab("Measurement Value")
 
 ```
 
+
+### Distribution Across each Network-Wide Metric Using Data
 ```{r}
-network_stat = data.frame("mean" = c(density_mean, overall_weight_mean, global_efficiency_mean), "sd" = c(density_sd, overall_weight_sd, global_efficiency_sd),"minimum" = c(density_range[[1]], overall_weight_range[[1]], global_efficiency_range[[1]]), "maximum" = c(density_range[[2]], overall_weight_range[[2]], global_efficiency_range[[2]]), "group" = c("Density","Overall Weight","Global Efficiency"))
+# Combine in network-wide metrics into a dataframe
+network_df = data.frame("Density" = unlist(density), "Overall Weight" = unlist(overall_weight), "Global Efficiency" = unlist(global_efficiency))
+
+# Group Boxplot
+stack(network_df) %>% 
+  dplyr::mutate(ordered_ind = factor(ind, 
+                                    levels = c("Density", "Global.Efficiency", "Overall.Weight"))) %>% 
+  ggplot(aes(x = ordered_ind, y = values)) + 
+  geom_boxplot() + xlab("Metric") +
+  ylab("Measurement Value")
+
+# Group Violin Plot
+stack(network_df) %>% 
+  dplyr::mutate(ordered_ind = factor(ind, 
+                                    levels = c("Density", "Global.Efficiency", "Overall.Weight"))) %>% 
+  ggplot(aes(x = ordered_ind, y = values)) + 
+  geom_violin() + xlab("Metric") +
+  ylab("Measurement Value")
+
+# Individual Violin Plots
+ggplot(network_df, aes(y = Density, x = "")) + geom_violin()
+ggplot(network_df, aes(y = Global.Efficiency, x = "")) + geom_violin()
+ggplot(network_df, aes(y = Overall.Weight, x = "")) + geom_violin()
 
 ```
+
+### Distributions Across each Variable
+```{r}
+# Boxplot
+ggplot(stack(data.frame(variable_degrees_mat)), aes(x ="" , y = values)) + geom_boxplot() + facet_wrap(~ ind, ncol = 13) +xlab("Variables") + ylab("Measurement Value") +theme( strip.text = element_text(size = 7))
+
+# Violin Plot
+ggplot(stack(data.frame(variable_degrees_mat)), aes(x ="" , y = values)) + geom_violin() + facet_wrap(~ ind, ncol = 13) +xlab("Variables") + ylab("Measurement Value") +theme( strip.text = element_text(size = 7))
+
+```
+
+
+
+
+
 

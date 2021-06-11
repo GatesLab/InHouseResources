@@ -185,6 +185,17 @@ ggplot(stack(data.frame(variable_degrees_mat)), aes(x ="" , y = values)) + geom_
 
 ```
 
+```{r}
+
+ggplot(data.frame(variable_degrees_mean, variable = seq(1,26)), aes(x = variable_degrees_mean, y = variable)) + geom_point()+geom_line(orientation = "y") + ylab("Variables") + xlab("Average Measurement Value")
+ggplot(data.frame(variable_strengths_mean, variable = seq(1,26)), aes(x = variable_strengths_mean, y = variable)) + geom_point()+geom_line(orientation = "y") + ylab("Variables") + xlab("Average Measurement Value")
+ggplot(data.frame(betweenness_mean, variable = seq(1,26)), aes(x = betweenness_mean, y = variable)) + geom_point()+geom_line(orientation = "y") + ylab("Variables") + xlab("Average Measurement Value")
+
+
+
+ggplot(data.frame(stack(data.frame(variable = feature_names, variable_degrees_mean, variable_strengths_mean, betweenness_mean)), variable = c(feature_names, feature_names, feature_names)), aes(x = values, y = variable)) + geom_point() + geom_line(group = 1, orientation = "y") + facet_wrap( ~ ind, scales = "free") + ylab("Variables") + xlab("Average Measurement Value")
+
+```
 
 
 

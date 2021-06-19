@@ -2,7 +2,7 @@
 title: "Network Analysis"
 author: "Shara He, Adanya Johnson"
 date: "6/7/2021"
-output: html_document
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
@@ -12,6 +12,9 @@ knitr::opts_chunk$set(echo = TRUE)
 library(brainGraph)
 library(igraph)
 library(tidyverse, ggplot2)
+library(gridExtra)
+# library(kableExtra)
+library(knitr)
 ```
 
 ## Preparing Data
@@ -124,6 +127,20 @@ betweenness_mean = apply(betweenness_mat, 2, mean)
 betweenness_sd = apply(betweenness_mat, 2, sd)
 betweenness_range = apply(betweenness_mat, 2, range)
 
+# store all summary stats in a df, build out table functionalities
+
+net_stat = data.frame("Density" = c(density_mean, density_sd, density_range), "Overall Weight" = c(overall_weight_mean, overall_weight_sd, overall_weight_range), "Global Efficiency" = c(global_efficiency_mean, global_efficiency_sd, global_efficiency_range))
+row.names(net_stat) = c("Mean", "Standard Deviation", "Minimum", "Maximum")
+# attr(net_stat, "row.names")
+typeof(row.names(net_stat))
+
+
+kt = knitr::kable(x =net_stat, row.names =TRUE, col.names = c("Density", "Overvall Weight", "Global Efficiency"))
+# net_stat %>%
+kt
+  
+
+# kable_styling(kt, latex_options = "striped", full_width = F)
 ```
 
 ## Plots and Distribution
@@ -149,6 +166,8 @@ p + xlab("Metric") +
 
 ### Distribution Across each Network-Wide Metric Using Data
 ```{r}
+# par(mfrow=3)
+
 # Combine in network-wide metrics into a dataframe
 network_df = data.frame("Density" = unlist(density), "Overall Weight" = unlist(overall_weight), "Global Efficiency" = unlist(global_efficiency))
 
@@ -168,10 +187,12 @@ stack(network_df) %>%
   geom_violin() + xlab("Metric") +
   ylab("Measurement Value")
 
-# Individual Violin Plots
-ggplot(network_df, aes(y = Density, x = "")) + geom_violin()
-ggplot(network_df, aes(y = Global.Efficiency, x = "")) + geom_violin()
-ggplot(network_df, aes(y = Overall.Weight, x = "")) + geom_violin()
+# Violin Plots
+
+density_plot = ggplot(network_df, aes(y = Density, x = "")) + geom_violin()
+efficiency_plot = ggplot(network_df, aes(y = Global.Efficiency, x = "")) + geom_violin()
+overall_weight_plot = ggplot(network_df, aes(y = Overall.Weight, x = "")) + geom_violin()
+grid.arrange(density_plot, efficiency_plot, overall_weight_plot, ncol = 3)
 
 ```
 
@@ -181,7 +202,7 @@ ggplot(network_df, aes(y = Overall.Weight, x = "")) + geom_violin()
 ggplot(stack(data.frame(variable_degrees_mat)), aes(x ="" , y = values)) + geom_boxplot() + facet_wrap(~ ind, ncol = 13) +xlab("Variables") + ylab("Measurement Value") +theme( strip.text = element_text(size = 7))
 
 # Violin Plot
-ggplot(stack(data.frame(variable_degrees_mat)), aes(x ="" , y = values)) + geom_violin() + facet_wrap(~ ind, ncol = 13) +xlab("Variables") + ylab("Measurement Value") +theme( strip.text = element_text(size = 7))
+ggplot(stack(data.frame(variable_degrees_mat)), aes(x ="" , y = values)) + geom_violin() + facet_wrap(~ ind, ncol = 13) +xlab("Variables") + ylab("Measurement Value") +theme( strip.text = element_text(size = 7)) + stat_summary(fun=mean, geom="point", shape=23, size=1) 
 
 ```
 

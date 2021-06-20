@@ -12,6 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(brainGraph)
 library(igraph)
 library(tidyverse, ggplot2)
+library(grid)
 library(gridExtra)
 # library(kableExtra)
 library(knitr)
@@ -145,76 +146,117 @@ kt
 
 ## Plots and Distribution
 
-### Boxplot Distribution Across each Network-Wide Metric Using Summary Statistics
+
+### Distribution across each network-wide metric using data
 ```{r}
-network_stat = data.frame("mean" = c(density_mean, overall_weight_mean, global_efficiency_mean), "sd" = c(density_sd, overall_weight_sd, global_efficiency_sd),"minimum" = c(density_range[[1]], overall_weight_range[[1]], global_efficiency_range[[1]]), "maximum" = c(density_range[[2]], overall_weight_range[[2]], global_efficiency_range[[2]]), "group" = c("Density","Overall Weight","Global Efficiency"))
-
-p = ggplot(network_stat, aes(x = as.factor(group))) +
-  geom_boxplot(aes(
-      lower = mean - sd, 
-      upper = mean + sd, 
-      middle = mean, 
-      ymin = minimum, 
-      ymax = maximum),
-      stat = "identity") 
-
-p + xlab("Metric") +
-  ylab("Measurement Value")
-
-```
-
-
-### Distribution Across each Network-Wide Metric Using Data
-```{r}
-# par(mfrow=3)
-
 # Combine in network-wide metrics into a dataframe
-network_df = data.frame("Density" = unlist(density), "Overall Weight" = unlist(overall_weight), "Global Efficiency" = unlist(global_efficiency))
-
-# Group Boxplot
-stack(network_df) %>% 
-  dplyr::mutate(ordered_ind = factor(ind, 
-                                    levels = c("Density", "Global.Efficiency", "Overall.Weight"))) %>% 
-  ggplot(aes(x = ordered_ind, y = values)) + 
-  geom_boxplot() + xlab("Metric") +
-  ylab("Measurement Value")
-
-# Group Violin Plot
-stack(network_df) %>% 
-  dplyr::mutate(ordered_ind = factor(ind, 
-                                    levels = c("Density", "Global.Efficiency", "Overall.Weight"))) %>% 
-  ggplot(aes(x = ordered_ind, y = values)) + 
-  geom_violin() + xlab("Metric") +
-  ylab("Measurement Value")
+network_df = data.frame(
+  "Density" = unlist(density), 
+  "Overall Weight" = unlist(overall_weight), 
+  "Global Efficiency" = unlist(global_efficiency))
 
 # Violin Plots
-
-density_plot = ggplot(network_df, aes(y = Density, x = "")) + geom_violin()
-efficiency_plot = ggplot(network_df, aes(y = Global.Efficiency, x = "")) + geom_violin()
-overall_weight_plot = ggplot(network_df, aes(y = Overall.Weight, x = "")) + geom_violin()
-grid.arrange(density_plot, efficiency_plot, overall_weight_plot, ncol = 3)
+density_plot = ggplot(network_df, aes(y = Density, x = "")) + 
+  geom_violin() + 
+  stat_summary(fun=mean, geom="point", shape=23, size=2) + 
+  xlab("Density") + 
+  ylab("")
+efficiency_plot = ggplot(network_df, aes(y = Global.Efficiency, x = "")) + 
+  geom_violin() + 
+  stat_summary(fun=mean, geom="point", shape=23, size=2) + 
+  xlab("Global Efficiency") + 
+  ylab("")
+overall_weight_plot = ggplot(network_df, aes(y = Overall.Weight, x = "")) + 
+  geom_violin() + 
+  stat_summary(fun=mean, geom="point", shape=23, size=2) + 
+  xlab("Overall Weight") + 
+  ylab("")
+grid.arrange(density_plot, efficiency_plot, overall_weight_plot, ncol = 3, 
+             top=textGrob("Network-Wide Distributions"))
 
 ```
 
-### Distributions Across each Variable
+The above plot illustrates that the density, global efficiency, and overall weight measurements are set at different scales and show different distributions. Density shows a relatively symmetrical distribution, whereas global efficiency shows a right-skewed distribution and overall weight shows a left-skewed distribution. 
+
+
+### Plot distributions across each variable-level metric
 ```{r}
-# Boxplot
-ggplot(stack(data.frame(variable_degrees_mat)), aes(x ="" , y = values)) + geom_boxplot() + facet_wrap(~ ind, ncol = 13) +xlab("Variables") + ylab("Measurement Value") +theme( strip.text = element_text(size = 7))
+# Variable Degrees Boxplot
+ggplot(stack(data.frame(variable_degrees_mat)), aes(x ="" , y = values)) + 
+  geom_boxplot() + 
+  facet_wrap(~ ind, ncol = 13) +
+  ggtitle("Variable Degrees Distributions") +
+  xlab("Variables") + 
+  ylab("Measurement Value") +
+  theme( strip.text = element_text(size = 7))
 
-# Violin Plot
-ggplot(stack(data.frame(variable_degrees_mat)), aes(x ="" , y = values)) + geom_violin() + facet_wrap(~ ind, ncol = 13) +xlab("Variables") + ylab("Measurement Value") +theme( strip.text = element_text(size = 7)) + stat_summary(fun=mean, geom="point", shape=23, size=1) 
+# Variable Degrees Violin Plot
+ggplot(stack(data.frame(variable_degrees_mat)), aes(x ="" , y = values)) + 
+  geom_violin() + 
+  facet_wrap(~ ind, ncol = 13) +
+  ggtitle("Variable Degrees Distributions") + 
+  xlab("Variables") +
+  ylab("Measurement Value") +
+  theme( strip.text = element_text(size = 7)) +
+  stat_summary(fun=mean, geom="point", shape=23, size=1) 
 
+# Variable Strengths Boxplot
+ggplot(stack(data.frame(variable_strengths_mat)), aes(x ="" , y = values)) + 
+  geom_boxplot() + 
+  facet_wrap(~ ind, ncol = 13) +
+  ggtitle("Variable Strengths Distributions") + 
+  xlab("Variables") + 
+  ylab("Measurement Value") +
+  theme( strip.text = element_text(size = 7))
+
+# Variable Strengths Violin Plot
+ggplot(stack(data.frame(variable_strengths_mat)), aes(x ="" , y = values)) + 
+  geom_violin() + 
+  facet_wrap(~ ind, ncol = 13) +
+  ggtitle("Variable Strengths Distributions") + 
+  xlab("Variables") +
+  ylab("Measurement Value") +
+  # ylim(-5,5) +
+  theme( strip.text = element_text(size = 7)) +
+  stat_summary(fun=mean, geom="point", shape=23, size=1) 
+
+# Betweenness Boxplot
+ggplot(stack(data.frame(betweenness_mat)), aes(x ="" , y = values)) + 
+  geom_boxplot() + 
+  facet_wrap(~ ind, ncol = 13) +
+  ggtitle("Betweenness Distributions") + 
+  xlab("Variables") + 
+  ylab("Measurement Value") +
+  theme( strip.text = element_text(size = 7))
+
+# Betweenness Violin Plot
+ggplot(stack(data.frame(betweenness_mat)), aes(x ="" , y = values)) + 
+  geom_violin() +  
+  facet_wrap(~ ind, ncol = 13) +
+  ggtitle("Betweenness Distributions") + 
+  xlab("Variables") +
+  ylab("Measurement Value") +
+  theme( strip.text = element_text(size = 7)) +
+  stat_summary(fun=mean, geom="point", shape=23, size=1) 
 ```
 
+The above violin plots help to visualize the skewness in some of the variable distributions. Specifically, many of the variables show a right skewed distribution for betweenness. However, these distributions are not visibly apparent when we graph only the average measurement value, such as in the comparison plot below.
+
+### Plot the average measurement value for variable-level metrics
 ```{r}
-
-ggplot(data.frame(variable_degrees_mean, variable = seq(1,26)), aes(x = variable_degrees_mean, y = variable)) + geom_point()+geom_line(orientation = "y") + ylab("Variables") + xlab("Average Measurement Value")
-ggplot(data.frame(variable_strengths_mean, variable = seq(1,26)), aes(x = variable_strengths_mean, y = variable)) + geom_point()+geom_line(orientation = "y") + ylab("Variables") + xlab("Average Measurement Value")
-ggplot(data.frame(betweenness_mean, variable = seq(1,26)), aes(x = betweenness_mean, y = variable)) + geom_point()+geom_line(orientation = "y") + ylab("Variables") + xlab("Average Measurement Value")
-
-
-
-ggplot(data.frame(stack(data.frame(variable = feature_names, variable_degrees_mean, variable_strengths_mean, betweenness_mean)), variable = c(feature_names, feature_names, feature_names)), aes(x = values, y = variable)) + geom_point() + geom_line(group = 1, orientation = "y") + facet_wrap( ~ ind, scales = "free") + ylab("Variables") + xlab("Average Measurement Value")
+var_level_df = data.frame(
+  variable = feature_names, variable_degrees_mean, variable_strengths_mean, betweenness_mean)
+colnames(var_level_df) = 
+  c("Variable", "Variable Degrees", "Variable Strengths", "Betweenness")
+ggplot(data.frame(stack(var_level_df), 
+  variable = c(feature_names, feature_names, feature_names)), 
+  aes(x = values, y = variable)) + 
+  geom_point() + 
+  geom_line(group = 1, orientation = "y") + 
+  facet_wrap( ~ ind, scales = "free") + 
+  ggtitle("Average Comparisons on Variable Level Metrics") +
+  ylab("Variables") + 
+  xlab("Average Measurement Value")
 
 ```
 

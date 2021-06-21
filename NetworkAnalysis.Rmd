@@ -4,7 +4,9 @@ author: "Shara He, Adanya Johnson"
 date: "6/7/2021"
 output: pdf_document
 ---
+## Setting Up the Environment
 
+You will need the following packages installed:  
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
@@ -19,6 +21,8 @@ library(knitr)
 ```
 
 ## Preparing Data
+
+Load in the require data.
 ```{r}
 # Read in data
 load("~/Desktop/School/GatesLab/NetworkAnalysis/FullMatrices.Rdata")
@@ -28,6 +32,8 @@ load("~/Desktop/School/GatesLab/NetworkAnalysis/FullMatrices.Rdata")
 ```
 
 ### Extract Submatrices for each Person
+
+The R data (outReg) is a list of 40 lists; each list corresponds to an individual and contains a 52 by 52 matrix. We want to extract 26 by 26 matrix for each person. The matrices are saved in two different lists. The first list (subdf) contains the original 26 by 26 matrix for each individual person. The second list (subdf_pos) contains a positive matrix, where every negative value is converted into zero. 
 ```{r}
 submatrix = list()
 for (x in 1:length(outReg)) {
@@ -45,6 +51,7 @@ for (x in 1:length(outReg)) {
 ```
 
 ### Extract Directed Graphs for each Person
+Here, we convert both the original and positive matrices for each person into graphs. The original and positive graphs are stored in two separate lists. 
 ```{r}
 dir_graph = list()
 dir_graph_pos = list()
@@ -58,6 +65,10 @@ dir_graph_pos[[19]]
 ```
 
 ## Metrics for each Person
+
+Now, using the directed graphs, we'll calculate the following metrics for each person: Density; Overall Weight; Edge Weight; Global Efficiency; Degree of Each Variable; Strength of Each Variable; Betweenness Centrality; Community Detection.
+
+Note, Global Efficiency, Betweenness Centrality, and Community Detection require the positive directed graphs rather than the original graph. 
 ```{r}
 density = list()
 overall_weight = list()
@@ -100,6 +111,8 @@ print(cluster[[1]])
 ```
 
 ## Computing Metric Summary Statistics
+
+Here, we calculate the mean, standard deviation, and range for Density, Overall Weight, Global Efficiency, Degree of Each Variable, Strength of Each Variable, and Betweenness Centrality. The summary statistics for Density, Overall Weight, and Global Efficiency are stored within a table for accessible viewing. 
 ```{r}
 density_mean = mean(unlist(density))
 density_sd = sd(unlist(density))

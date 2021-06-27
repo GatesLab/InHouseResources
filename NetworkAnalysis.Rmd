@@ -7,98 +7,128 @@ output: pdf_document
 ## Setting Up the Environment
 
 You will need the following packages installed:  
+`brainGraph`, `igraph`, `tidyverse`, `ggplot2`, `grid`, `gridExtra`, `knitr`, `kableExtra`
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-# install.packages("brainGraph")
 library(brainGraph)
 library(igraph)
 library(tidyverse, ggplot2)
 library(grid)
 library(gridExtra)
-# library(kableExtra)
 library(knitr)
+# library(kableExtra)
+
 ```
 
 ## Preparing Data
 
-Load in the require data.
+Load in the required data.
 ```{r}
 # Read in data
 load("~/Desktop/School/GatesLab/NetworkAnalysis/FullMatrices.Rdata")
 
 # Preview all data
-# View(outReg)
+# head(outReg)
 ```
 
 ### Extract Submatrices for each Person
 
-The R data (outReg) is a list of 40 lists; each list corresponds to an individual and contains a 52 by 52 matrix. We want to extract 26 by 26 matrix for each person. The matrices are saved in two different lists. The first list (subdf) contains the original 26 by 26 matrix for each individual person. The second list (subdf_pos) contains a positive matrix, where every negative value is converted into zero. 
+The R data `outReg` is a list of 40 lists; each list corresponds to an individual and contains a 52 by 52 regression matrix. We want to analyze the first 26 variables for each individual, and we will extract a 26 by 26 regression matrix for each person. The matrices are saved in two different lists. The first list `subdf` contains the original 26 by 26 regression matrix for each individual person. The second list `subdf_pos` contains a positive regression matrix, where every negative value is converted into zero. 
+
 ```{r}
 submatrix = list()
 for (x in 1:length(outReg)) {
-  submatrix = append(submatrix, list(outReg[[x]][["regression_matrix"]][1:26,1:26]))
+  submatrix = append(submatrix, list(outReg[[x]][["regression_matrix"]][1:26, 1:26]))
 }
+
 # Convert all submatrices into double type
-feature_names = c("energetic", "enthusiastic", "content", "irritable", "restless", "worried", "guilty",  "afraid", "anhedonia", "angry","hopeless", "down", "positive", "fatigue", "tension", "concentrate", "accepted", "threatened", "ruminate", "avoid_act", "reassure", "procrast", "hours", "difficult", "unsatisfy", "avoid_people")
+feature_names = c("energetic", "enthusiastic", "content", "irritable", "restless",
+                  "worried", "guilty",  "afraid", "anhedonia", "angry","hopeless",
+                  "down", "positive", "fatigue", "tension", "concentrate", "accepted",
+                  "threatened", "ruminate", "avoid_act", "reassure", "procrast",
+                  "hours", "difficult", "unsatisfy", "avoid_people")
 subdf = list()
 subdf_pos = list()
+
 for (x in 1:length(outReg)) {
-  subdf[[x]] = matrix(unlist(submatrix[x]), ncol = 26, byrow = FALSE, dimnames = list(feature_names, feature_names))
+  subdf[[x]] = matrix(
+    unlist(submatrix[x]),
+    ncol = 26,
+    byrow = FALSE,
+    dimnames = list(feature_names, feature_names)
+  )
   subdf_pos[[x]] = pmax(subdf[[x]], 0)
 }
 
 ```
 
 ### Extract Directed Graphs for each Person
-Here, we convert both the original and positive matrices for each person into graphs. The original and positive graphs are stored in two separate lists. 
+
+Here, we convert both the original and positive matrices for each individual into directed graphs. The original and positive graphs are stored in two separate lists. 
+
 ```{r}
 dir_graph = list()
 dir_graph_pos = list()
-for(x in 1:length(outReg) ){
-  dir_graph[[x]] = graph.adjacency(subdf[[x]], mode = "directed", weighted = TRUE)
-  dir_graph_pos[[x]] = graph.adjacency(subdf_pos[[x]], mode = "directed", weighted = TRUE)
+
+for (x in 1:length(outReg)) {
+  dir_graph[[x]] = graph.adjacency(subdf[[x]],
+                                   mode = "directed",
+                                   weighted = TRUE)
+  dir_graph_pos[[x]] = graph.adjacency(subdf_pos[[x]],
+                                       mode = "directed",
+                                       weighted = TRUE)
 }
+
 dir_graph[[19]]
 dir_graph_pos[[19]]
-
 ```
 
 ## Metrics for each Person
 
-Now, using the directed graphs, we'll calculate the following metrics for each person: Density; Overall Weight; Edge Weight; Global Efficiency; Degree of Each Variable; Strength of Each Variable; Betweenness Centrality; Community Detection.
+Now, using the directed graphs, we will calculate the following metrics for each person: Density; Overall Weight; Edge Weight; Global Efficiency; Degree of Each Variable; Strength of Each Variable; Betweenness Centrality; Community Detection.
 
 Note, Global Efficiency, Betweenness Centrality, and Community Detection require the positive directed graphs rather than the original graph. 
+
 ```{r}
 density = list()
 overall_weight = list()
 edge_weights = list()
 global_efficiency = list()
-variable_degrees = list() 
-variable_strengths = list() 
+variable_degrees = list()
+variable_strengths = list()
 betweenness = list()
 cluster = list()
-for(x in 1:length(outReg)) {
+
+
+for (x in 1:length(outReg)) {
   density[[x]] = edge_density(dir_graph[[x]], loops = FALSE)
   overall_weight[[x]] = sum(strength(dir_graph[[x]]))
   edge_weights[[x]] = edge_attr(dir_graph_pos[[x]], "weight")
-
-  global_efficiency[[x]] = efficiency(dir_graph_pos[[x]], 
-                                     type = c("global"), 
-                                     weights = edge_weights[[x]])
+  
+  global_efficiency[[x]] = efficiency(dir_graph_pos[[x]],
+                                      type = c("global"),
+                                      weights = edge_weights[[x]])
   variable_degrees[[x]] = degree(dir_graph[[x]])
   variable_strengths[[x]] = strength(dir_graph[[x]])
   
-  betweenness[[x]] = estimate_betweenness(dir_graph_pos[[x]], cutoff=-1, weights =edge_weights[[x]])
-  cluster[[x]] = cluster_walktrap(dir_graph_pos[[x]], 
-                                  weights = E(dir_graph_pos[[x]])$edge_weights, 
-                                  steps = 4)
-                            
-
+  betweenness[[x]] = estimate_betweenness(dir_graph_pos[[x]],
+                                          cutoff = -1, weights = edge_weights[[x]])
+  cluster[[x]] = cluster_walktrap(
+    dir_graph_pos[[x]],
+    weights = E(dir_graph_pos[[x]])$edge_weights,
+    steps = 4
+  )
 }
 print(paste0("Density of the first person's graph: ", round(density[[1]], 4)))
-print(paste0("Overall Weight of the first person's graph: ", round(overall_weight[[1]], 4))) 
-print(paste0("Global Efficiency of the first person's graph: ", round(global_efficiency[[1]], 4))) 
+print(paste0(
+  "Overall Weight of the first person's graph: ",
+  round(overall_weight[[1]], 4)
+))
+print(paste0(
+  "Global Efficiency of the first person's graph: ",
+  round(global_efficiency[[1]], 4)
+))
 print("Degree of each variable in the first person's graph: ")
 print(variable_degrees[[1]])
 print("Strengths of each variable in the first person's graph: ")
@@ -113,6 +143,7 @@ print(cluster[[1]])
 ## Computing Metric Summary Statistics
 
 Here, we calculate the mean, standard deviation, and range for Density, Overall Weight, Global Efficiency, Degree of Each Variable, Strength of Each Variable, and Betweenness Centrality. The summary statistics for Density, Overall Weight, and Global Efficiency are stored within a table for accessible viewing. 
+
 ```{r}
 density_mean = mean(unlist(density))
 density_sd = sd(unlist(density))
@@ -141,134 +172,181 @@ betweenness_mean = apply(betweenness_mat, 2, mean)
 betweenness_sd = apply(betweenness_mat, 2, sd)
 betweenness_range = apply(betweenness_mat, 2, range)
 
-# store all summary stats in a df, build out table functionalities
-
-net_stat = data.frame("Density" = c(density_mean, density_sd, density_range), "Overall Weight" = c(overall_weight_mean, overall_weight_sd, overall_weight_range), "Global Efficiency" = c(global_efficiency_mean, global_efficiency_sd, global_efficiency_range))
+# Store all summary stats into a DataFrame
+net_stat = data.frame(
+  "Density" = c(density_mean, density_sd, density_range),
+  "Overall Weight" = c(overall_weight_mean, overall_weight_sd, overall_weight_range),
+  "Global Efficiency" = c(
+    global_efficiency_mean,
+    global_efficiency_sd,
+    global_efficiency_range
+  )
+)
 row.names(net_stat) = c("Mean", "Standard Deviation", "Minimum", "Maximum")
-# attr(net_stat, "row.names")
-typeof(row.names(net_stat))
 
-
-kt = knitr::kable(x =net_stat, row.names =TRUE, col.names = c("Density", "Overvall Weight", "Global Efficiency"))
-# net_stat %>%
+kt = knitr::kable(
+  x = net_stat,
+  row.names = TRUE,
+  col.names = c("Density", "Overvall Weight", "Global Efficiency")
+)
 kt
-  
 
 # kable_styling(kt, latex_options = "striped", full_width = F)
 ```
 
 ## Plots and Distribution
 
-
 ### Distribution across each network-wide metric using data
 ```{r}
-# Combine in network-wide metrics into a dataframe
+# Combine network-wide metrics into a dataframe
 network_df = data.frame(
-  "Density" = unlist(density), 
-  "Overall Weight" = unlist(overall_weight), 
-  "Global Efficiency" = unlist(global_efficiency))
+  "Density" = unlist(density),
+  "Overall Weight" = unlist(overall_weight),
+  "Global Efficiency" = unlist(global_efficiency)
+)
 
 # Violin Plots
-density_plot = ggplot(network_df, aes(y = Density, x = "")) + 
-  geom_violin() + 
-  stat_summary(fun=mean, geom="point", shape=23, size=2) + 
-  xlab("Density") + 
+density_plot = ggplot(network_df, aes(y = Density, x = "")) +
+  geom_violin() +
+  stat_summary(
+    fun = mean,
+    geom = "point",
+    shape = 23,
+    size = 2
+  ) +
+  xlab("Density") +
   ylab("")
-efficiency_plot = ggplot(network_df, aes(y = Global.Efficiency, x = "")) + 
-  geom_violin() + 
-  stat_summary(fun=mean, geom="point", shape=23, size=2) + 
-  xlab("Global Efficiency") + 
+efficiency_plot = ggplot(network_df, aes(y = Global.Efficiency, x = "")) +
+  geom_violin() +
+  stat_summary(
+    fun = mean,
+    geom = "point",
+    shape = 23,
+    size = 2
+  ) +
+  xlab("Global Efficiency") +
   ylab("")
-overall_weight_plot = ggplot(network_df, aes(y = Overall.Weight, x = "")) + 
-  geom_violin() + 
-  stat_summary(fun=mean, geom="point", shape=23, size=2) + 
-  xlab("Overall Weight") + 
+overall_weight_plot = ggplot(network_df, aes(y = Overall.Weight, x = "")) +
+  geom_violin() +
+  stat_summary(
+    fun = mean,
+    geom = "point",
+    shape = 23,
+    size = 2
+  ) +
+  xlab("Overall Weight") +
   ylab("")
-grid.arrange(density_plot, efficiency_plot, overall_weight_plot, ncol = 3, 
-             top=textGrob("Network-Wide Distributions"))
+grid.arrange(
+  density_plot,
+  efficiency_plot,
+  overall_weight_plot,
+  ncol = 3,
+  top = textGrob("Network-Wide Distributions")
+)
 
 ```
 
-The above plot illustrates that the density, global efficiency, and overall weight measurements are set at different scales and show different distributions. Density shows a relatively symmetrical distribution, whereas global efficiency shows a right-skewed distribution and overall weight shows a left-skewed distribution. 
-
+The above plot illustrates that the density, global efficiency, and overall weight measurements are set at different scales and show different distributions. Density shows a relatively symmetrical distribution, whereas Global Efficiency shows a right-skewed distribution and Overall Weight shows a left-skewed distribution. 
 
 ### Plot distributions across each variable-level metric
 ```{r}
 # Variable Degrees Boxplot
-ggplot(stack(data.frame(variable_degrees_mat)), aes(x ="" , y = values)) + 
-  geom_boxplot() + 
-  facet_wrap(~ ind, ncol = 13) +
+ggplot(stack(data.frame(variable_degrees_mat)), aes(x = "" , y = values)) +
+  geom_boxplot() +
+  facet_wrap( ~ ind, ncol = 13) +
   ggtitle("Variable Degrees Distributions") +
-  xlab("Variables") + 
-  ylab("Measurement Value") +
-  theme( strip.text = element_text(size = 7))
-
-# Variable Degrees Violin Plot
-ggplot(stack(data.frame(variable_degrees_mat)), aes(x ="" , y = values)) + 
-  geom_violin() + 
-  facet_wrap(~ ind, ncol = 13) +
-  ggtitle("Variable Degrees Distributions") + 
   xlab("Variables") +
   ylab("Measurement Value") +
-  theme( strip.text = element_text(size = 7)) +
-  stat_summary(fun=mean, geom="point", shape=23, size=1) 
+  theme(strip.text = element_text(size = 7))
+
+# Variable Degrees Violin Plot
+ggplot(stack(data.frame(variable_degrees_mat)), aes(x = "" , y = values)) +
+  geom_violin() +
+  facet_wrap( ~ ind, ncol = 13) +
+  ggtitle("Variable Degrees Distributions") +
+  xlab("Variables") +
+  ylab("Measurement Value") +
+  theme(strip.text = element_text(size = 7)) +
+  stat_summary(
+    fun = mean,
+    geom = "point",
+    shape = 23,
+    size = 1
+  ) 
 
 # Variable Strengths Boxplot
-ggplot(stack(data.frame(variable_strengths_mat)), aes(x ="" , y = values)) + 
-  geom_boxplot() + 
-  facet_wrap(~ ind, ncol = 13) +
-  ggtitle("Variable Strengths Distributions") + 
-  xlab("Variables") + 
+ggplot(stack(data.frame(variable_strengths_mat)), aes(x = "" , y = values)) +
+  geom_boxplot() +
+  facet_wrap( ~ ind, ncol = 13) +
+  ggtitle("Variable Strengths Distributions") +
+  xlab("Variables") +
   ylab("Measurement Value") +
-  theme( strip.text = element_text(size = 7))
+  theme(strip.text = element_text(size = 7))
 
 # Variable Strengths Violin Plot
-ggplot(stack(data.frame(variable_strengths_mat)), aes(x ="" , y = values)) + 
-  geom_violin() + 
-  facet_wrap(~ ind, ncol = 13) +
-  ggtitle("Variable Strengths Distributions") + 
+ggplot(stack(data.frame(variable_strengths_mat)), aes(x = "" , y = values)) +
+  geom_violin() +
+  facet_wrap( ~ ind, ncol = 13) +
+  ggtitle("Variable Strengths Distributions") +
   xlab("Variables") +
   ylab("Measurement Value") +
   # ylim(-5,5) +
-  theme( strip.text = element_text(size = 7)) +
-  stat_summary(fun=mean, geom="point", shape=23, size=1) 
+  theme(strip.text = element_text(size = 7)) +
+  stat_summary(
+    fun = mean,
+    geom = "point",
+    shape = 23,
+    size = 1
+  ) 
 
 # Betweenness Boxplot
-ggplot(stack(data.frame(betweenness_mat)), aes(x ="" , y = values)) + 
-  geom_boxplot() + 
-  facet_wrap(~ ind, ncol = 13) +
-  ggtitle("Betweenness Distributions") + 
-  xlab("Variables") + 
-  ylab("Measurement Value") +
-  theme( strip.text = element_text(size = 7))
-
-# Betweenness Violin Plot
-ggplot(stack(data.frame(betweenness_mat)), aes(x ="" , y = values)) + 
-  geom_violin() +  
-  facet_wrap(~ ind, ncol = 13) +
-  ggtitle("Betweenness Distributions") + 
+ggplot(stack(data.frame(betweenness_mat)), aes(x = "" , y = values)) +
+  geom_boxplot() +
+  facet_wrap( ~ ind, ncol = 13) +
+  ggtitle("Betweenness Distributions") +
   xlab("Variables") +
   ylab("Measurement Value") +
-  theme( strip.text = element_text(size = 7)) +
-  stat_summary(fun=mean, geom="point", shape=23, size=1) 
+  theme(strip.text = element_text(size = 7))
+
+# Betweenness Violin Plot
+ggplot(stack(data.frame(betweenness_mat)), aes(x = "" , y = values)) +
+  geom_violin() +
+  facet_wrap( ~ ind, ncol = 13) +
+  ggtitle("Betweenness Distributions") +
+  xlab("Variables") +
+  ylab("Measurement Value") +
+  theme(strip.text = element_text(size = 7)) +
+  stat_summary(
+    fun = mean,
+    geom = "point",
+    shape = 23,
+    size = 1
+  ) 
 ```
 
-The above violin plots help to visualize the skewness in some of the variable distributions. Specifically, many of the variables show a right skewed distribution for betweenness. However, these distributions are not visibly apparent when we graph only the average measurement value, such as in the comparison plot below.
+The above violin plots help to visualize the skewness in some of the variable distributions. Specifically, many of the variables show a right-skewed distribution for betweenness. However, these distributions are not visibly apparent when we graph only the average measurement value, such as in the comparison plot below.
 
 ### Plot the average measurement value for variable-level metrics
 ```{r}
-var_level_df = data.frame(
-  variable = feature_names, variable_degrees_mean, variable_strengths_mean, betweenness_mean)
-colnames(var_level_df) = 
-  c("Variable", "Variable Degrees", "Variable Strengths", "Betweenness")
-ggplot(data.frame(stack(var_level_df), 
-  variable = c(feature_names, feature_names, feature_names)), 
-  aes(x = values, y = variable)) + 
-  geom_point() + 
-  geom_line(group = 1, orientation = "y") + 
-  facet_wrap( ~ ind, scales = "free") + 
+var_level_df = data.frame(variable = feature_names,
+                          variable_degrees_mean,
+                          variable_strengths_mean,
+                          betweenness_mean)
+colnames(var_level_df) =
+  c("Variable",
+    "Variable Degrees",
+    "Variable Strengths",
+    "Betweenness")
+ggplot(data.frame(
+  stack(var_level_df),
+  variable = c(feature_names, feature_names, feature_names)
+),
+aes(x = values, y = variable)) +
+  geom_point() +
+  geom_line(group = 1, orientation = "y") +
+  facet_wrap(~ ind, scales = "free") +
   ggtitle("Average Comparisons on Variable Level Metrics") +
-  ylab("Variables") + 
+  ylab("Variables") +
   xlab("Average Measurement Value")
 
 ```

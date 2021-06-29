@@ -174,36 +174,15 @@ betweenness_sd = apply(betweenness_mat, 2, sd)
 betweenness_range = apply(betweenness_mat, 2, range)
 
 # Store all summary stats into a DataFrame
-# Variables as Columns
+
 net_stat = data.frame(
-  "Density" = c(density_mean, density_sd, density_range),
-  "Overall Weight" = c(overall_weight_mean, overall_weight_sd, overall_weight_range),
-  "Global Efficiency" = c(
-    global_efficiency_mean,
-    global_efficiency_sd,
-    global_efficiency_range
-  )
-)
-
-row.names(net_stat) = c("Mean", "Standard Deviation", "Minimum", "Maximum")
-
-kt = knitr::kable(
-  x = net_stat,
-  row.names = TRUE,
-  col.names = c("Density", "Overvall Weight", "Global Efficiency")
-)
-kable_classic(kt, full_width = FALSE, html_font = "Cambria")
-
-# Variables as Rows
-
-net_stat_transposed = data.frame(
   "Mean" = c(density_mean, overall_weight_mean, global_efficiency_mean),
   "Standard Deviation" = c(density_sd, overall_weight_sd, global_efficiency_sd),
   "Minimum" = c(
     density_range[1],
     overall_weight_range[1],
     global_efficiency_range[1]
-  ), 
+  ),
   "Maximum" = c(
     density_range[2],
     overall_weight_range[2],
@@ -211,15 +190,16 @@ net_stat_transposed = data.frame(
   )
 )
 
-row.names(net_stat_transposed) = c("Density", "Overvall Weight", "Global Efficiency")
+row.names(net_stat) = c("Density", "Overvall Weight", "Global Efficiency")
+colnames(net_stat) = c("Mean", "Standard Deviation", "Minimum", "Maximum")
 
-kt_transposed = knitr::kable(
-  x = net_stat_transposed,
-  row.names = TRUE,
-  col.names = c("Mean", "Standard Deviation", "Minimum", "Maximum")
+kbl(
+  net_stat,
+  booktabs = TRUE,
+  digits = 3,
+  align = 'c',
+  centering = TRUE
 )
-kable_classic(kt_transposed, full_width = FALSE, html_font = "Cambria")
-
 ```
 
 ## Plots and Distribution
@@ -312,7 +292,7 @@ ggplot(stack(data.frame(variable_degrees_mat)), aes(
   geom_violin(width = 2, size = .1) +
   coord_flip() +
   theme(legend.position = "none") +
-  ggtitle("Betweenness Distributions") +
+  ggtitle("Variable Degrees Distributions") +
   xlab("Variables") +
   ylab("Measurement Value")
 
@@ -351,7 +331,7 @@ ggplot(stack(data.frame(variable_strengths_mat)), aes(
   geom_violin(width = 2, size = .1) +
   coord_flip() +
   theme(legend.position = "none") +
-  ggtitle("Betweenness Distributions") +
+  ggtitle("Variable Strengths Distributions") +
   xlab("Variables") +
   ylab("Measurement Value")
 
